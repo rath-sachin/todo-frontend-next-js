@@ -1,58 +1,127 @@
 "use client";
-// import Image from "next/image";
-// import axios from "axios";
-// import { FormEvent, FormEventHandler, useRef } from "react";
-
 import { Button } from "@/components/button";
-import Page from "./login/page";
-import axios from "axios";
-import { unescape } from "querystring";
 import { useSession } from "@/session";
-import { redirect } from "next/navigation";
+import axios from "axios";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { redirect, useRouter } from "next/navigation";
 
-// export default function Home() {
-//   const todo = useRef<HTMLInputElement>(null);
-//   async function setTodos(e: FormEvent<HTMLFormElement>) {
-//     e.preventDefault();
-//     const res = await axios.post(
-//       "http://localhost:5000/api/todo",
-//       {
-//         name: todo.current?.value,
-//       },
-//       {
-//         withCredentials: true,
-//       }
-//     );
-//     console.log(res.data);
-//   }
-
-//   return (
-//     <div className="flex h-screen justify-center items-center">
-//       <form onSubmit={setTodos} className="space-y-4 p-5 border rounded">
-//         <div>
-//           <label className="block">Todos</label>
-//           <input className="text-black" ref={todo}></input>
-//         </div>
-//         <button className="bg-gray-700 w-full text-black">Save</button>
-//       </form>
-//     </div>
-//   );
-// }
-// }
-//
-export default function Home() {
+export default function Page() {
+  const [todos, setTodos] = useState([]);
   const session = useSession();
-  async function onClick() {
-    await axios.post("http://localhost:5000/api/auth/signout", undefined, {
+  const router = useRouter();
+  const name = useRef<HTMLInputElement>(null);
+  function deleteTodo(id: number) {
+    setTodos((old) => old.filter((todo) => todo.id != id));
+  }
+  async function getTodos() {
+    const res = await axios.get("http://localhost:5000/api/todo", {
+      withCredentials: true,
+    });
+    setTodos(res.data);
+  }
+  useEffect(() => {
+    getTodos();
+  }, []);
+  console.log(todos);
+  async function createTodo(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const res = await axios.post(
+      "http://localhost:5000/api/todo",
+      {
+        name: name.current?.value,
+      },
+      {
+        withCredentials: true,
+      }
+    );
+    console.log(res.data);
+    await getTodos();
+  }
+  async function logOut() {
+    const res = await axios.post("http://localhost:5000/api/auth/signout", {
       withCredentials: true,
     });
     session.setUser(null);
   }
-  if (session.user === null) {
-    redirect("/login");
+  {
+    /* container */
   }
-  if (session.user === undefined) {
-    return "loading";
-  }
-  return <Button onClick={onClick}>signout</Button>;
+  return (
+    <div className="flex h-screen justify-center items-center bg-gray-300">
+      <div className="w-full max-w-[1440px] h-full max-h-[800px] bg-white rounded-lg overflow-hidden">
+        {/* loading bar */}
+        <div className="w-full h-3 bg-green-100">
+          {/* progress */}
+          <div className="h-full w-1/2 bg-green-500"></div>
+        </div>
+        {/* body */}
+        <div className="flex flex-row bg-gray-600 h-full">
+          {/* left-body */}
+          <div className="w-full h-full bg-white overflow-hidden">
+            {session.user ? (
+              <div className="p-5 flex flex-col h-full overflow-auto gap-4">
+                {todos.map((todo) => (
+                  <div
+                    className="p-2 bg-gray-200 rounded-sm font-semibold flex"
+                    key={todo.id}
+                  >
+                    <span>{todo.name}</span>
+                    <button
+                      onClick={() => deleteTodo(todo.id)}
+                      className="ml-auto block p-1 bg-red-500 text-white"
+                    >
+                      delete
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="justify-center flex items-center h-full">
+                Signin to create todo!
+              </div>
+            )}
+          </div>
+          {/* right-body */}
+          <div className="flex flex-col w-[500px] h-full bg-sky-200">
+            {/* todos input */}
+            {session.user ? (
+              <form onSubmit={createTodo} className="flex flex-col p-10 gap-3">
+                <input
+                  className="w-full bg-white p-2 rounded-lg border border-gray-400/60"
+                  type="text"
+                  name="name"
+                  ref={name}
+                />
+                <Button>Create</Button>
+              </form>
+            ) : null}
+            <div className="mt-auto flex flex-col p-10 gap-3">
+              {session.user ? (
+                <Button onClick={logOut} variant="destructive">
+                  Log out
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => {
+                      router.push("/login");
+                    }}
+                  >
+                    Sign in
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      router.push("/signup");
+                    }}
+                  >
+                    Sign up
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
