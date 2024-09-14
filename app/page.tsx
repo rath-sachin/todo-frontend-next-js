@@ -10,15 +10,37 @@ export default function Page() {
   const session = useSession();
   const router = useRouter();
   const name = useRef<HTMLInputElement>(null);
-  function deleteTodo(id: number) {
-    setTodos((old) => old.filter((todo) => todo.id != id));
+
+  async function changeStatus(id: number, status: boolean) {
+    const res = await axios.put(
+      `http://localhost:5000/api/todo/${id}`,
+      {
+        status,
+      },
+      {
+        withCredentials: true,
+      }
+    );
+
+    await getTodos();
   }
-  async function getTodos() {
-    const res = await axios.get("http://localhost:5000/api/todo", {
+
+  async function deleteTodo(id: number) {
+    const res = await axios.delete(`http://localhost:5000/api/todo/${id}`, {
       withCredentials: true,
     });
-    setTodos(res.data);
+    await getTodos();
   }
+
+  async function getTodos() {
+    try {
+      const res = await axios.get("http://localhost:5000/api/todo", {
+        withCredentials: true,
+      });
+      setTodos(res.data);
+    } catch (e) {}
+  }
+
   useEffect(() => {
     getTodos();
   }, []);
@@ -62,10 +84,17 @@ export default function Page() {
               <div className="p-5 flex flex-col h-full overflow-auto gap-4">
                 {todos.map((todo) => (
                   <div
-                    className="p-2 bg-gray-200 rounded-sm font-semibold flex"
+                    className="p-2 bg-gray-200 rounded-sm font-semibold flex "
                     key={todo.id}
                   >
-                    <span>{todo.name}</span>
+                    <span
+                      onClick={async () =>
+                        await changeStatus(todo.id, !todo.status)
+                      }
+                      className={todo.status ? "line-through" : ""}
+                    >
+                      {todo.name}
+                    </span>
                     <button
                       onClick={() => deleteTodo(todo.id)}
                       className="ml-auto block p-1 bg-red-500 text-white"
